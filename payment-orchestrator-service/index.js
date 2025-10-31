@@ -33,20 +33,54 @@ app.post("/orchestrator/sale", validator(saleSchema), async (req, res) => {
   );
 
   if (handleIdempotency(idempotencyKey, callbackUrl, res)) return;
-  
 
-  const transactionId = `stub_sale_${Date.now()}`;
-  const result = mapSuccess({
-    merchantReference,
-    operation: "sale",
-    amount,
-    currency,
-    transactionId,
-  });
+  try {
+    const btResult = await gateway.transaction.sale({
+      amount,
+      paymentMethodNonce,
+      options: { submitForSettlement: true },
+    });
 
-  await processTransaction({ idempotencyKey, callbackUrl, result, res });
+    let result;
+
+    if (btResult.success && btResult.transaction) {
+      result = mapSuccess({
+        merchantReference,
+        operation: "sale",
+        amount,
+        currency,
+        transactionId: btResult.transaction.id,
+      });
+      logger.info(`Braintree sale success: txn=${btResult.transaction.id}`);
+    } else {
+      result = mapFailure({
+        merchantReference,
+        operation: "sale",
+        amount,
+        currency,
+        code: btResult?.transaction?.processorResponseCode || "BT_ERROR",
+        message:
+          btResult?.transaction?.processorResponseText ||
+          btResult?.message ||
+          "Braintree sale failed",
+      });
+      logger.warn(`Braintree sale failed: ${btResult?.message}`);
+    }
+
+    await processTransaction({ idempotencyKey, callbackUrl, result, res });
+  } catch (err) {
+    logger.error(`Sale error: ${err.message}`);
+    const result = mapFailure({
+      merchantReference,
+      operation: "sale",
+      amount,
+      currency,
+      code: "EXCEPTION",
+      message: err.message,
+    });
+    await processTransaction({ idempotencyKey, callbackUrl, result, res });
+  }
 });
-
 
 app.post("/orchestrator/refund", validator(refundSchema), async (req, res) => {
   const {
@@ -58,20 +92,52 @@ app.post("/orchestrator/refund", validator(refundSchema), async (req, res) => {
   } = req.body;
 
   logger.info(
-    `Refund request received: ref=${merchantReference}, amount=${amount}`
+    `Refund request received: ref=${merchantReference}, txn=${transactionId}, amount=${amount}`
   );
 
   if (handleIdempotency(idempotencyKey, callbackUrl, res)) return;
 
-  const result = mapSuccess({
-    merchantReference,
-    operation: "refund",
-    amount,
-    currency: "EUR",
-    transactionId: `stub_refund_${Date.now()}`,
-  });
+  try {
+    const btResult = await gateway.transaction.refund(transactionId, amount);
 
-  await processTransaction({ idempotencyKey, callbackUrl, result, res });
+    let result;
+    if (btResult.success && btResult.transaction) {
+      result = mapSuccess({
+        merchantReference,
+        operation: "refund",
+        amount,
+        currency: "EUR",
+        transactionId: btResult.transaction.id,
+      });
+      logger.info(`Braintree refund success: txn=${btResult.transaction.id}`);
+    } else {
+      result = mapFailure({
+        merchantReference,
+        operation: "refund",
+        amount,
+        currency: "EUR",
+        code: btResult?.transaction?.processorResponseCode || "BT_ERROR",
+        message:
+          btResult?.transaction?.processorResponseText ||
+          btResult?.message ||
+          "Braintree refund failed",
+      });
+      logger.warn(`Braintree refund failed: ${btResult?.message}`);
+    }
+
+    await processTransaction({ idempotencyKey, callbackUrl, result, res });
+  } catch (err) {
+    logger.error(`Refund error: ${err.message}`);
+    const result = mapFailure({
+      merchantReference,
+      operation: "refund",
+      amount,
+      currency: "EUR",
+      code: "EXCEPTION",
+      message: err.message,
+    });
+    await processTransaction({ idempotencyKey, callbackUrl, result, res });
+  }
 });
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
