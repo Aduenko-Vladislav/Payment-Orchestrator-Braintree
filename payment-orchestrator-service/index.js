@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import { errorHandler } from "./src/middleware/errors/errors.js";
 import { mapSuccess, mapFailure } from "./src/utils/mappers.js";
 import { validator } from "./src/middleware/validation.js";
 import { saleSchema } from "./src/validation/saleSchema.js";
@@ -142,10 +143,5 @@ app.post("/orchestrator/refund", validator(refundSchema), async (req, res) => {
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.use((err, req, res, next) => {
-  const status = err.status || 500;
-  logger.error(`HTTP ${status}: ${err.message}`);
-  res.status(status).json({ error: { code: status, message: err.message } });
-});
-
+app.use(errorHandler);
 app.listen(PORT, () => logger.info(`Orchestrator (POS) running on :${PORT}`));
