@@ -16,7 +16,8 @@ export async function handleRefund(req, res) {
     `Refund request received: ref=${merchantReference}, txn=${transactionId}, amount=${amount}`
   );
 
-  if (handleIdempotency(idempotencyKey, callbackUrl, res)) return;
+  if (await handleIdempotency(idempotencyKey, callbackUrl, res, "refund"))
+    return;
 
   try {
     const btResult = await gateway.transaction.refund(transactionId, amount);

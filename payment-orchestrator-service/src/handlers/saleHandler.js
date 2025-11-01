@@ -17,7 +17,7 @@ export async function handleSale(req, res) {
     `Sale request received: ref=${merchantReference}, amount=${amount}`
   );
 
-  if (handleIdempotency(idempotencyKey, callbackUrl, res)) return;
+  if (await handleIdempotency(idempotencyKey, callbackUrl, res, "sale")) return;
 
   try {
     const btResult = await gateway.transaction.sale({

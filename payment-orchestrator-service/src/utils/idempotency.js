@@ -1,23 +1,39 @@
 import { postWebhook } from "./webhook.js";
 import logger from "../logger/winstonLogging.js";
-
-const idemStore = new Map();
+import { createRedisIdempotencyStorage } from "../storage/redisIdempotencyStorage.js";
+const idemStore = createRedisIdempotencyStorage();
 
 /**
  * Handles idempotency check - returns cached result if key exists
  * @param {string} idempotencyKey - Idempotency key
  * @param {string} callbackUrl - URL to send webhook to
  * @param {Object} res - Express response object
+ * @param {string} operation - Operation type: "sale" or "refund"
  * @returns {boolean} True if cached result was returned, false otherwise
  */
-export function handleIdempotency(idempotencyKey, callbackUrl, res) {
-  if (!idemStore.has(idempotencyKey)) {
-    logger.debug(`Idempotency key not found: ${idempotencyKey.slice(0,8)}`);
+export async function handleIdempotency(
+  idempotencyKey,
+  callbackUrl,
+  res,
+  operation
+) {
+  if (!(await idemStore.has(idempotencyKey, operation))) {
+    logger.debug(
+      `Idempotency key not found: ${idempotencyKey.slice(
+        0,
+        8
+      )} operation=${operation}`
+    );
     return false;
   }
-  const cached = idemStore.get(idempotencyKey);
+  const cached = await idemStore.get(idempotencyKey, operation);
 
-  logger.info(`Returning cached result for idempotency key: ${idempotencyKey.slice(0, 8)}`);
+  logger.info(
+    `Returning cached result for idempotency key: ${idempotencyKey.slice(
+      0,
+      8
+    )} operation=${operation}`
+  );
   postWebhook(callbackUrl, cached);
   res.json({ ok: true, idempotent: true });
   return true;
@@ -38,8 +54,14 @@ export async function processTransaction({
   res,
 }) {
   if (idempotencyKey) {
-    idemStore.set(idempotencyKey, result);
-    logger.info(`Stored result for idempotency key: ${idempotencyKey.slice(0, 8)}`);
+    const operation = result.operation || "sale";
+    await idemStore.set(idempotencyKey, result, operation);
+    logger.info(
+      `Stored result for idempotency key: ${idempotencyKey.slice(
+        0,
+        8
+      )} operation=${operation}`
+    );
   }
   logger.info(
     `Processing transaction: ${result.operation} for ${result.merchantReference}`

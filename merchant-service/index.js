@@ -11,7 +11,7 @@ import { createPaymentHandler } from "./src/handlers/paymentHandler.js";
 import { createRefundHandler } from "./src/handlers/refundHandler.js";
 import { createCallbackHandler } from "./src/handlers/callbackHandler.js";
 import { createStatusHandler } from "./src/handlers/statusHandler.js";
-
+import { createRedisTransactionStorage } from "./src/storage/redisTransactionStorage.js";
 dotenv.config();
 
 const app = express();
@@ -27,7 +27,7 @@ app.use(
 const PORT = Number(process.env.PORT);
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL;
 
-const store = new Map();
+const storage = createRedisTransactionStorage();
 
 // Starts a Sale
 app.post(
@@ -48,10 +48,10 @@ app.post(
   "/merchant/callback",
   verifyHmac,
   validator(callbackSchema),
-  createCallbackHandler(store)
+  createCallbackHandler(storage)
 );
 //check Status
-app.get("/merchant/status/:merchantReference", createStatusHandler(store));
+app.get("/merchant/status/:merchantReference", createStatusHandler(storage));
 
 // Healthcheck
 app.get("/health", (_req, res) => res.json({ ok: true }));
