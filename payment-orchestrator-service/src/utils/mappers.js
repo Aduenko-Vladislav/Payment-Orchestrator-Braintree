@@ -59,3 +59,23 @@ export function mapFailure({
     error: { code: String(code || "ERROR"), message: String(message || "") },
   };
 }
+
+export function mapPending({
+  merchantReference,
+  operation,
+  amount,
+  currency,
+  transactionId,
+}) {
+  return {
+    merchantReference,
+    provider: "braintree",
+    operation,
+    status: "PANDING",
+    transactionId: String(transactionId),
+    amount: typeof amount === "number" ? amount.toFixed(2) : String(amount),
+    currency: String(currency || "EUR").toUpperCase(),
+    timestamp: new Date().toISOString(),
+    error: null,
+  };
+}

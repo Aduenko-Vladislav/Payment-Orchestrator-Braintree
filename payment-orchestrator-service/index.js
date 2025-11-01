@@ -43,8 +43,18 @@ app.post("/orchestrator/sale", validator(saleSchema), async (req, res) => {
     });
 
     let result;
+    const status = btResult?.transaction?.status;
 
-    if (btResult.success && btResult.transaction) {
+    if (status === "settlement_pending" || status === "settling") {
+      result = mapPending({
+        merchantReference,
+        operation: "sale",
+        amount,
+        currency,
+        transactionId: btResult.transaction.id,
+      });
+      logger.info(`Braintree refund pending: txn=${btResult.transaction.id}`);
+    } else if (btResult.success && btResult.transaction) {
       result = mapSuccess({
         merchantReference,
         operation: "sale",
@@ -102,7 +112,17 @@ app.post("/orchestrator/refund", validator(refundSchema), async (req, res) => {
     const btResult = await gateway.transaction.refund(transactionId, amount);
 
     let result;
-    if (btResult.success && btResult.transaction) {
+    const status = btResult?.transaction?.status;
+    if (status === "settlement_pending" || status === "settling") {
+      result = mapPending({
+        merchantReference,
+        operation: "refund",
+        amount,
+        currency,
+        transactionId: btResult.transaction.id,
+      });
+      logger.info(`Braintree refund pending: txn=${btResult.transaction.id}`);
+    } else if (btResult.success && btResult.transaction) {
       result = mapSuccess({
         merchantReference,
         operation: "refund",
