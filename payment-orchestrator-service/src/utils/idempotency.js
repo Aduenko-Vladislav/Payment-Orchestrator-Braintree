@@ -12,10 +12,11 @@ const idemStore = new Map();
  */
 export function handleIdempotency(idempotencyKey, callbackUrl, res) {
   if (!idemStore.has(idempotencyKey)) {
-    logger.debug(`Idempotency key not found: ${idempotencyKey}`);
+    logger.debug(`Idempotency key not found: ${idempotencyKey.slice(0,8)}`);
     return false;
   }
   const cached = idemStore.get(idempotencyKey);
+
   logger.info(`Returning cached result for idempotency key: ${idempotencyKey.slice(0, 8)}`);
   postWebhook(callbackUrl, cached);
   res.json({ ok: true, idempotent: true });
