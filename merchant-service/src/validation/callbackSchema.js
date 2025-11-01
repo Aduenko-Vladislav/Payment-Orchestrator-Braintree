@@ -1,0 +1,13 @@
+import Joi from "joi";
+
+export const callbackSchema = Joi.object({
+  merchantReference: Joi.string().trim().required(),
+  operation: Joi.string().valid("sale", "refund", "void").required(),
+  status: Joi.string().valid("SUCCESS", "FAILED", "PENDING").required(),
+  amount: Joi.string()
+    .pattern(/^\d+(\.\d{1,2})?$/)
+    .required(),
+  currency: Joi.string().uppercase().length(3).required(),
+  transactionId: Joi.string().trim().required(),
+  timestamp: Joi.string().isoDate().required(),
+}).unknown(true);
