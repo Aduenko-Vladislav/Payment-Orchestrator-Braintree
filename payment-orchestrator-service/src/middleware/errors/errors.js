@@ -7,7 +7,7 @@ export function createError(status, message) {
 
 export function errorHandler(error, req, res, next) {
 const status = error.status ?? 500;
-logger.error(`HTTP ${status}: ${err.message}`);
+logger.error(`HTTP ${status}: ${error.message}`);
 const message = error.message ?? "Internal server error";
 res.status(status).json({ error: { code: status, message: err.message } });
 }
