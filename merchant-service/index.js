@@ -1,9 +1,13 @@
 import express from "express";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
-import { createOrchestratorClient } from "./utils/httpClient.js";
-import logger from "./logger/winstonLogging.js";
-import { failResponse, okResponse } from "./utils/response.js";
+import { createOrchestratorClient } from "./src/utils/httpClient.js";
+import logger from "./src/logger/winstonLogging.js";
+import { errorHandler } from "./src/middleware/errors/errors.js";
+import { validator } from "./src/middleware/validation.js";
+import { paymentSchema } from "./src/validation/PaymentSchema.js";
+import { refundSchema } from "./src/validation/refundSchema.js";
+import { callbackSchema } from "./src/validation/callbackSchema.js";
 
 dotenv.config();
 
@@ -18,18 +22,8 @@ const store = new Map();
 const httpOrchestrator = createOrchestratorClient();
 
 // Starts a Sale
-app.post("/merchant/payments", async (req, res) => {
-  const { amount, currency, paymentMethodNonce, merchantReference } =
-    req.body || {};
-
-  if (!amount || !merchantReference || !paymentMethodNonce) {
-    return failResponse(
-      res,
-      400,
-      "amount, paymentMethodNonce, merchantReference are required",
-      merchantReference
-    );
-  }
+app.post("/merchant/payments", validator(paymentSchema), async (req, res) => {
+  const { amount, currency, paymentMethodNonce, merchantReference } = req.body;
 
   const idempotencyKey = uuidv4();
   const payload = {
@@ -43,34 +37,30 @@ app.post("/merchant/payments", async (req, res) => {
 
   try {
     await httpOrchestrator.post("/orchestrator/sale", payload);
-    return okResponse(
-      res,
-      "Sale started",
+    logger.info(
+      `202 Sale started ref=${merchantReference} idemKey=${idempotencyKey}`
+    );
+    return res.status(202).json({
+      message: "Sale started",
       merchantReference,
-      { idempotencyKey },
-      202
+      idempotencyKey,
+    });
+  } catch (err) {
+    const status = err.response?.status ?? 502;
+    const body = err.response?.data ?? {
+      error: "Failed to reach orchestrator",
+      merchantReference,
+    };
+    logger.error(
+      `Sale error: status=${status} ref=${merchantReference} msg=${err.message}`
     );
-  } catch (e) {
-    return failResponse(
-      res,
-      502,
-      "Failed to reach orchestrator",
-      merchantReference
-    );
+    return res.status(status).json(body);
   }
 });
 
 // Starts a Refund
-app.post("/merchant/refunds", async (req, res) => {
-  const { transactionId, amount, merchantReference } = req.body || {};
-  if (!transactionId || !amount || !merchantReference) {
-    return failResponse(
-      res,
-      400,
-      "transactionId, amount, merchantReference are required",
-      merchantReference
-    );
-  }
+app.post("/merchant/refunds", validator(refundSchema), async (req, res) => {
+  const { transactionId, amount, merchantReference } = req.body;
 
   const idempotencyKey = uuidv4();
   const payload = {
@@ -83,36 +73,42 @@ app.post("/merchant/refunds", async (req, res) => {
 
   try {
     await httpOrchestrator.post("/orchestrator/refund", payload);
-    return okResponse(
-      res,
-      "Refund started",
+    logger.info(
+      `202 Refund started ref=${merchantReference} idemKey=${idempotencyKey}`
+    );
+    return res.status(202).json({
+      message: "Refund started",
       merchantReference,
-      { idempotencyKey },
-      202
+      idempotencyKey,
+    });
+  } catch (err) {
+    const status = err.response?.status ?? 502;
+    const body = err.response?.data ?? {
+      error: "Failed to reach orchestrator",
+      merchantReference,
+    };
+    logger.error(
+      `Refund error: status=${status} ref=${merchantReference} msg=${err.message}`
     );
-  } catch (e) {
-    return failResponse(
-      res,
-      502,
-      "Failed to reach orchestrator",
-      merchantReference
-    );
+    return res.status(status).json(body);
   }
 });
 
 //  Webhook
-app.post("/merchant/callback", (req, res) => {
+app.post("/merchant/callback", validator(callbackSchema), (req, res) => {
   // HMAC validation
-  const result = req.body || {};
-  if (!result.merchantReference) {
-    logger.warn("Callback without merchantReference");
-    return failResponse(res, 400, "merchantReference is required in callback");
+  const result = req.body;
+
+  const prev = store.get(result.merchantReference);
+  if (prev) {
+    logger.info(
+      `Callback duplicate: ref=${result.merchantReference} (overwrite)`
+    );
   }
+
   store.set(result.merchantReference, result);
   logger.info(
-    `Callback received: ref=${result.merchantReference} status=${
-      result.status ?? "unknown"
-    }`
+    `Callback received: ref=${result.merchantReference} status=${result.status}`
   );
   return res.json({ ok: true });
 });
@@ -120,12 +116,16 @@ app.post("/merchant/callback", (req, res) => {
 // Check status
 app.get("/merchant/status/:merchantReference", (req, res) => {
   const result = store.get(req.params.merchantReference);
-  if (!result)
-    return failResponse(res, 404, "Not found", req.params.merchantReference);
+  if (!result) {
+    logger.warn(`Status not found: ref=${ref}`);
+    return res.status(404).json({ error: "Not found", merchantReference: ref });
+  }
+
   return res.json(result);
 });
 
 // Healthcheck
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+app.use(errorHandler);
 app.listen(PORT, () => logger.info(`Merchant Service running on :${PORT}`));
