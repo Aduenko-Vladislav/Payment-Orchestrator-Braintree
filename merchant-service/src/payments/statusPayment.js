@@ -23,7 +23,7 @@ export const STATUS_PRIORITY = { PENDING: 1, FAILED: 1, SUCCESS: 2 };
 /**
  * Merge previous and incoming states respecting “no downgrade from SUCCESS”.
  * If no change should be applied, returns the previous object as-is (same reference).
- * If an upgrade occurs, returns a new merged object.
+ * If an upgrade occurs or transactionId changes, returns a new merged object.
  *
  * Why return the same object when unchanged?
  * - Callers can check `const changed = merged !== prev` to detect updates
@@ -45,6 +45,37 @@ export function mergedResult(prev, incoming) {
 
   if (inP > prevP) {
     return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
+  }
+
+  // If same status but different transactionId, it's a new transaction - update it
+  if (
+    prev.status === incoming.status &&
+    incoming.transactionId &&
+    prev.transactionId !== incoming.transactionId
+  ) {
+    return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
+  }
+
+  // If same status and same transactionId but other fields changed, update
+  if (
+    prev.status === incoming.status &&
+    prev.transactionId === incoming.transactionId
+  ) {
+    // Check if any other fields changed
+    const prevStr = JSON.stringify({
+      amount: prev.amount,
+      currency: prev.currency,
+      timestamp: prev.timestamp,
+    });
+    const incomingStr = JSON.stringify({
+      amount: incoming.amount,
+      currency: incoming.currency,
+      timestamp: incoming.timestamp,
+    });
+    
+    if (prevStr !== incomingStr) {
+      return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
+    }
   }
 
   return prev;

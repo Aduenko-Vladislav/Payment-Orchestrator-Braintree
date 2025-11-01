@@ -1,9 +1,8 @@
 import axios from "axios";
-import dotenv from "dotenv";
 import axiosRetry from "axios-retry";
 import logger from "../logger/winstonLogging.js";
 import { hmacSignature } from "../security/security.js";
-
+import dotenv from "dotenv";
 dotenv.config();
 
 const webhookClient = axios.create({ timeout: 8000 });
