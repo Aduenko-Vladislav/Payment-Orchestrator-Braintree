@@ -1,9 +1,26 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import axiosRetry from "axios-retry";
 import logger from "../logger/winstonLogging.js";
 import { hmacSignature } from "../security/security.js";
 
 dotenv.config();
+
+const webhookClient = axios.create({ timeout: 8000 });
+
+axiosRetry(webhookClient, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  shouldResetTimeout: true,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkError(error) ||
+    (error.response?.status >= 500 && error.response?.status < 600),
+  onRetry: (retryCount, error, requestConfig) => {
+    logger.warn(
+      `Webhook retry ${retryCount}/3 -> ${requestConfig?.url} reason=${error?.message}`
+    );
+  },
+});
 
 /**
  * Sends a webhook notification to the callback URL
@@ -17,14 +34,14 @@ export async function postWebhook(callbackUrl, payload) {
   }
   const secret = process.env.CALLBACK_SECRET;
   const raw = Buffer.from(JSON.stringify(payload));
+  const sig = hmacSignature(raw, secret);
 
   try {
-    await axios.post(callbackUrl, raw, {
-      timeout: 8000,
+    await webhookClient.post(callbackUrl, raw, {
       headers: {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(raw),
-        "X-Signature": hmacSignature(raw, secret),
+        "X-Signature": sig,
       },
     });
     logger.info(`Webhook sent successfully to ${callbackUrl}`);

@@ -16,7 +16,8 @@ export function handleIdempotency(idempotencyKey, callbackUrl, res) {
     return false;
   }
   const cached = idemStore.get(idempotencyKey);
-  logger.info(`Returning cached result for idempotency key: ${idempotencyKey.slice(0,8)}`);
+
+  logger.info(`Returning cached result for idempotency key: ${idempotencyKey.slice(0, 8)}`);
   postWebhook(callbackUrl, cached);
   res.json({ ok: true, idempotent: true });
   return true;
@@ -38,7 +39,7 @@ export async function processTransaction({
 }) {
   if (idempotencyKey) {
     idemStore.set(idempotencyKey, result);
-    logger.info(`Stored result for idempotency key: ${idempotencyKey.slice(0,8)}`);
+    logger.info(`Stored result for idempotency key: ${idempotencyKey.slice(0, 8)}`);
   }
   logger.info(
     `Processing transaction: ${result.operation} for ${result.merchantReference}`
