@@ -7,7 +7,7 @@ export const callbackSchema = Joi.object({
   amount: Joi.string()
     .pattern(/^\d+(\.\d{1,2})?$/)
     .required(),
-  currency: Joi.string().uppercase().length(3).required(),
+  currency: Joi.string().uppercase().required(),
   transactionId: Joi.string().trim().required(),
   timestamp: Joi.string().isoDate().required(),
 }).unknown(true);
