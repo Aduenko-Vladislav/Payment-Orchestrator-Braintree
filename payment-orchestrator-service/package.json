@@ -15,6 +15,7 @@
   "dependencies": {
     "axios": "^1.13.1",
     "braintree": "^3.34.0",
+    "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "joi": "^18.0.1",

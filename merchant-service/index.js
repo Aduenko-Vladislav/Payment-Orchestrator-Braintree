@@ -8,11 +8,19 @@ import { validator } from "./src/middleware/validation.js";
 import { paymentSchema } from "./src/validation/PaymentSchema.js";
 import { refundSchema } from "./src/validation/refundSchema.js";
 import { callbackSchema } from "./src/validation/callbackSchema.js";
+import { verifyHmac } from "./src/middleware/security/verifySignature.js";
 
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+app.use(
+  express.json({
+    limit: "1mb",
+    verify: (req, _res, buf) => {
+      req.rawBody = Buffer.from(buf);
+    },
+  })
+);
 
 const PORT = Number(process.env.PORT);
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL;
@@ -95,23 +103,27 @@ app.post("/merchant/refunds", validator(refundSchema), async (req, res) => {
 });
 
 //  Webhook
-app.post("/merchant/callback", validator(callbackSchema), (req, res) => {
-  // HMAC validation
-  const result = req.body;
+app.post(
+  "/merchant/callback",
+  verifyHmac,
+  validator(callbackSchema),
+  (req, res) => {
+    const result = req.body;
 
-  const prev = store.get(result.merchantReference);
-  if (prev) {
+    const prev = store.get(result.merchantReference);
+    if (prev) {
+      logger.info(
+        `Callback duplicate: ref=${result.merchantReference} (overwrite)`
+      );
+    }
+
+    store.set(result.merchantReference, result);
     logger.info(
-      `Callback duplicate: ref=${result.merchantReference} (overwrite)`
+      `Callback received: ref=${result.merchantReference} status=${result.status}`
     );
+    return res.json({ ok: true });
   }
-
-  store.set(result.merchantReference, result);
-  logger.info(
-    `Callback received: ref=${result.merchantReference} status=${result.status}`
-  );
-  return res.json({ ok: true });
-});
+);
 
 // Check status
 app.get("/merchant/status/:merchantReference", (req, res) => {
