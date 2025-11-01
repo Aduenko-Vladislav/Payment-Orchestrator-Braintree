@@ -46,7 +46,7 @@ app.post("/merchant/payments", validator(paymentSchema), async (req, res) => {
   try {
     await httpOrchestrator.post("/orchestrator/sale", payload);
     logger.info(
-      `202 Sale started ref=${merchantReference} idemKey=${idempotencyKey}`
+      `202 Sale started ref=${merchantReference} idemKey=${idempotencyKey.slice(0, 8)}`
     );
     return res.status(202).json({
       message: "Sale started",
@@ -82,7 +82,7 @@ app.post("/merchant/refunds", validator(refundSchema), async (req, res) => {
   try {
     await httpOrchestrator.post("/orchestrator/refund", payload);
     logger.info(
-      `202 Refund started ref=${merchantReference} idemKey=${idempotencyKey}`
+      `202 Refund started ref=${merchantReference} idemKey=${idempotencyKey.slice(0, 8)}`
     );
     return res.status(202).json({
       message: "Refund started",
