@@ -8,6 +8,11 @@ export const callbackSchema = Joi.object({
     .pattern(/^\d+(\.\d{1,2})?$/)
     .required(),
   currency: Joi.string().uppercase().required(),
-  transactionId: Joi.string().trim().required(),
+  transactionId: Joi.alternatives().conditional("status", {
+    is: "SUCCESS",
+    then: Joi.string().trim().required(),  
+    otherwise: Joi.string().allow("", null).optional(), 
+  }),
   timestamp: Joi.string().isoDate().required(),
+  
 }).unknown(true);
