@@ -66,12 +66,12 @@ REDIS_PORT
 # Orchestrator
 cd payment-orchestrator-service
 npm install
-npm run dev
+npm start
 
 # Merchant Service
 cd ../merchant-service
 npm install
-npm run dev
+npm start
 ```
 
 **Expected logs:**
