@@ -11,7 +11,7 @@ class RedisTransactionStorage {
   async set(merchantReference, data, operation) {
     const client = await getRedisClient();
     const key = `${operation}:${merchantReference}`;
-    await client.set(key, JSON.stringify(data));
+    await client.set(key, JSON.stringify(data), { EX: 86400 });
   }
 
   async has(merchantReference, operation) {
