@@ -12,6 +12,10 @@ import { createRefundHandler } from "./src/handlers/refundHandler.js";
 import { createCallbackHandler } from "./src/handlers/callbackHandler.js";
 import { createStatusHandler } from "./src/handlers/statusHandler.js";
 import { createRedisTransactionStorage } from "./src/storage/redisTransactionStorage.js";
+import {
+  statusParamsSchema,
+  statusQuerySchema,
+} from "./src/validation/statusSchema.js";
 dotenv.config();
 
 const app = express();
@@ -51,7 +55,12 @@ app.post(
   createCallbackHandler(storage)
 );
 //check Status
-app.get("/merchant/status/:merchantReference", createStatusHandler(storage));
+app.get(
+  "/merchant/status/:merchantReference",
+  validator(statusParamsSchema, "params"),
+  validator(statusQuerySchema, "query"),
+  createStatusHandler(storage)
+);
 
 // Healthcheck
 app.get("/health", (_req, res) => res.json({ ok: true }));

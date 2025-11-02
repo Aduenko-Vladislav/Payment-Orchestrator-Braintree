@@ -17,7 +17,6 @@ export async function getRedisClient() {
     process.env.REDIS_USERNAME ||
     process.env.REDIS_PASSWORD
   ) {
-    // Use separate credentials format
     clientOptions = {
       username: process.env.REDIS_USERNAME || "default",
       password: process.env.REDIS_PASSWORD,
@@ -27,7 +26,6 @@ export async function getRedisClient() {
       },
     };
   } else {
-    // Default to localhost
     clientOptions = { url: "redis://localhost:6379" };
   }
 

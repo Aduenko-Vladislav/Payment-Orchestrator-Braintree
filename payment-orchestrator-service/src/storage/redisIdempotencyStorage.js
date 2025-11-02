@@ -11,7 +11,7 @@ class RedisIdempotencyStorage {
   async set(idempotencyKey, result, operation) {
     const client = await getRedisClient();
     const key = `idempotency:${operation}:${idempotencyKey}`;
-    await client.set(key, JSON.stringify(result));
+    await client.set(key, JSON.stringify(result), { EX: 86400 });
   }
 
   async has(idempotencyKey, operation) {
