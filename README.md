@@ -33,12 +33,7 @@ Client ──▶ Merchant Service ──▶ Payment Orchestrator ──▶ Brain
 
 ## 🚀 Local Setup
 
-### 1. Start Redis
-```bash
-docker run -d --name redis -p 6379:6379 redis:7
-```
-
-### 2. Environment Configuration
+### 1. Environment Configuration
 
 **`payment-orchestrator-service/.env`**
 ```
@@ -47,7 +42,10 @@ BRAINTREE_MERCHANT_ID=your_merchant_id
 BRAINTREE_PUBLIC_KEY=your_public_key
 BRAINTREE_PRIVATE_KEY=your_private_key
 CALLBACK_SECRET=supersecret
-REDIS_URL=redis://localhost:6379
+REDIS_USERNAME
+REDIS_PASSWORD
+REDIS_HOST
+REDIS_PORT
 ```
 
 **`merchant-service/.env`**
@@ -56,10 +54,13 @@ PORT=3001
 ORCHESTRATOR_URL=http://localhost:3002
 PUBLIC_BASE_URL=http://localhost:3001
 CALLBACK_SECRET=supersecret
-REDIS_URL=redis://localhost:6379
+REDIS_USERNAME
+REDIS_PASSWORD
+REDIS_HOST
+REDIS_PORT
 ```
 
-### 3. Install and start
+### 2. Install and start
 
 ```bash
 # Orchestrator
@@ -186,7 +187,7 @@ https://adyenko-job-1345914.postman.co/workspace/Vladislav-Aduenko's-Workspace~b
 ## 🧰 API Summary
 
 | Method | Endpoint | Description |
-|---------|-----------|-------------|
+|---------|-----------_-|-------------|
 | `POST` | `/merchant/pay` | Start a sale transaction |
 | `POST` | `/merchant/refund` | Start a refund transaction |
 | `GET` | `/merchant/status/:merchantReference?operation=sale|refund` | Check transaction status |
