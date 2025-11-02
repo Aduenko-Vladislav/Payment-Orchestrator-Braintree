@@ -147,7 +147,10 @@ curl "http://localhost:3001/merchant/status/order_7?operation=refund"
   "message": "Result not available yet. Try again later."
 }
 ```
-
+(https://www.svgrepo.com/show/354202/postman-icon.svg) **Link to POSTMAN Collecttion**
+```
+https://adyenko-job-1345914.postman.co/workspace/Vladislav-Aduenko's-Workspace~b2ea1a18-07a9-4865-8371-2394bca6dbbd/collection/49706189-9d33c98a-ea5f-4257-98ce-b3141d18b9f7?action=share&creator=49706189
+```
 ---
 
 ## 🔐 Webhook Security
