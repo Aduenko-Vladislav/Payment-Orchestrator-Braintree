@@ -187,7 +187,7 @@ https://adyenko-job-1345914.postman.co/workspace/Vladislav-Aduenko's-Workspace~b
 ## 🧰 API Summary
 
 | Method | Endpoint | Description |
-|---------|-----------_-|-------------|
+|---------|---------------|-------------|
 | `POST` | `/merchant/pay` | Start a sale transaction |
 | `POST` | `/merchant/refund` | Start a refund transaction |
 | `GET` | `/merchant/status/:merchantReference?operation=sale|refund` | Check transaction status |
@@ -271,5 +271,3 @@ Covers:
 - Asynchronous processing via webhooks.
 - Resilient to retries (idempotency).
 - Safe HMAC verification on callback.
-
----
