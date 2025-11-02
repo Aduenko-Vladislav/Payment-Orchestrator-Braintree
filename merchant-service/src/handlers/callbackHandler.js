@@ -13,22 +13,35 @@ export function createCallbackHandler(storage) {
     const statusChanged = prev ? prev.status !== merged.status : true;
     const payloadChanged = JSON.stringify(prev) !== JSON.stringify(merged);
 
-    if (!prev) {
-      logger.info(
-        `Callback received: ref=${ref} operation=${operation} status=${incoming.status}`
-      );
-    } else if (statusChanged) {
-      logger.info(
-        `Callback updated: ref=${ref} operation=${operation} ${prev.status} -> ${merged.status}`
-      );
-    } else if (!payloadChanged) {
-      logger.info(
-        `Callback idempotent: ref=${ref} operation=${operation} status=${incoming.status} unchanged`
-      );
-    } else {
-      logger.info(
-        `Callback merged: ref=${ref} operation=${operation} status=${incoming.status} details updated`
-      );
+    const callbackType = !prev
+      ? "new"
+      : statusChanged
+      ? "statusChanged"
+      : !payloadChanged
+      ? "idempotent"
+      : "merged";
+
+    switch (callbackType) {
+      case "new":
+        logger.info(
+          `Callback received: ref=${ref} operation=${operation} status=${incoming.status}`
+        );
+        break;
+      case "statusChanged":
+        logger.info(
+          `Callback updated: ref=${ref} operation=${operation} ${prev.status} -> ${merged.status}`
+        );
+        break;
+      case "idempotent":
+        logger.info(
+          `Callback idempotent: ref=${ref} operation=${operation} status=${incoming.status} unchanged`
+        );
+        break;
+      case "merged":
+        logger.info(
+          `Callback merged: ref=${ref} operation=${operation} status=${incoming.status} details updated`
+        );
+        break;
     }
 
     await storage.set(ref, merged, operation);

@@ -39,44 +39,62 @@ export function mergedResult(prev, incoming) {
   const prevP = STATUS_PRIORITY[prev.status] ?? 0;
   const inP = STATUS_PRIORITY[incoming.status] ?? 0;
 
+ 
+  let mergeType;
+
   if (prev.status === "SUCCESS" && incoming.status !== "SUCCESS") {
-    return prev;
-  }
-
-  if (inP > prevP) {
-    return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
-  }
-
-  // If same status but different transactionId, it's a new transaction - update it
-  if (
+    mergeType = "noDowngrade";
+  } else if (inP > prevP) {
+    mergeType = "upgrade";
+  } else if (
     prev.status === incoming.status &&
     incoming.transactionId &&
     prev.transactionId !== incoming.transactionId
   ) {
-    return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
-  }
-
-  // If same status and same transactionId but other fields changed, update
-  if (
+    mergeType = "sameStatusNewTransaction";
+  } else if (
     prev.status === incoming.status &&
     prev.transactionId === incoming.transactionId
   ) {
-    // Check if any other fields changed
-    const prevStr = JSON.stringify({
-      amount: prev.amount,
-      currency: prev.currency,
-      timestamp: prev.timestamp,
-    });
-    const incomingStr = JSON.stringify({
-      amount: incoming.amount,
-      currency: incoming.currency,
-      timestamp: incoming.timestamp,
-    });
-    
-    if (prevStr !== incomingStr) {
-      return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
-    }
+    mergeType = "sameStatusSameTransaction";
+  } else {
+    mergeType = "noChange";
   }
 
-  return prev;
+  switch (mergeType) {
+    case "noDowngrade":
+      // Never downgrade SUCCESS to FAILED/PENDING
+      return prev;
+
+    case "upgrade":
+      // Allow upgrade FAILED/PENDING → SUCCESS
+      return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
+
+    case "sameStatusNewTransaction":
+      // If same status but different transactionId, it's a new transaction - update it
+      return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
+
+    case "sameStatusSameTransaction": {
+      // If same status and same transactionId but other fields changed, update
+      const prevStr = JSON.stringify({
+        amount: prev.amount,
+        currency: prev.currency,
+        timestamp: prev.timestamp,
+      });
+      const incomingStr = JSON.stringify({
+        amount: incoming.amount,
+        currency: incoming.currency,
+        timestamp: incoming.timestamp,
+      });
+
+      if (prevStr !== incomingStr) {
+        return { ...prev, ...incoming, updatedAt: new Date().toISOString() };
+      }
+      return prev;
+    }
+
+    case "noChange":
+    default:
+      return prev;
+  }
 }

@@ -24,40 +24,57 @@ export async function handleRefund(req, res) {
 
     let result;
     const status = btResult?.transaction?.status;
+
+    let resultType;
     if (status === "settlement_pending" || status === "settling") {
-      result = mapTransaction({
-        merchantReference,
-        operation: "refund",
-        amount,
-        currency: "EUR",
-        transactionId: btResult.transaction.id,
-        status: "PENDING",
-      });
-      logger.info(`Braintree refund pending: txn=${btResult.transaction.id}`);
+      resultType = "pending";
     } else if (btResult.success && btResult.transaction) {
-      result = mapTransaction({
-        merchantReference,
-        operation: "refund",
-        amount,
-        currency: "EUR",
-        transactionId: btResult.transaction.id,
-        status: "SUCCESS",
-      });
-      logger.info(`Braintree refund success: txn=${btResult.transaction.id}`);
+      resultType = "success";
     } else {
-      result = mapTransaction({
-        merchantReference,
-        operation: "refund",
-        amount,
-        currency: "EUR",
-        code: btResult?.transaction?.processorResponseCode || "BT_ERROR",
-        message:
-          btResult?.transaction?.processorResponseText ||
-          btResult?.message ||
-          "Braintree refund failed",
-        status: "FAILED",
-      });
-      logger.warn(`Braintree refund failed: ${btResult?.message}`);
+      resultType = "failed";
+    }
+
+    switch (resultType) {
+      case "pending":
+        result = mapTransaction({
+          merchantReference,
+          operation: "refund",
+          amount,
+          currency: "EUR",
+          transactionId: btResult.transaction.id,
+          status: "PENDING",
+        });
+        logger.info(`Braintree refund pending: txn=${btResult.transaction.id}`);
+        break;
+
+      case "success":
+        result = mapTransaction({
+          merchantReference,
+          operation: "refund",
+          amount,
+          currency: "EUR",
+          transactionId: btResult.transaction.id,
+          status: "SUCCESS",
+        });
+        logger.info(`Braintree refund success: txn=${btResult.transaction.id}`);
+        break;
+
+      case "failed":
+      default:
+        result = mapTransaction({
+          merchantReference,
+          operation: "refund",
+          amount,
+          currency: "EUR",
+          code: btResult?.transaction?.processorResponseCode || "BT_ERROR",
+          message:
+            btResult?.transaction?.processorResponseText ||
+            btResult?.message ||
+            "Braintree refund failed",
+          status: "FAILED",
+        });
+        logger.warn(`Braintree refund failed: ${btResult?.message}`);
+        break;
     }
 
     await processTransaction({ idempotencyKey, callbackUrl, result, res });

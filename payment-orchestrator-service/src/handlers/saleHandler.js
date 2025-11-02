@@ -29,40 +29,56 @@ export async function handleSale(req, res) {
     let result;
     const status = btResult?.transaction?.status;
 
+    let resultType;
     if (status === "settlement_pending" || status === "settling") {
-      result = mapTransaction({
-        merchantReference,
-        operation: "sale",
-        amount,
-        currency,
-        transactionId: btResult.transaction.id,
-        status: "PENDING",
-      });
-      logger.info(`Braintree sale pending: txn=${btResult.transaction.id}`);
+      resultType = "pending";
     } else if (btResult.success && btResult.transaction) {
-      result = mapTransaction({
-        merchantReference,
-        operation: "sale",
-        amount,
-        currency,
-        transactionId: btResult.transaction.id,
-        status: "SUCCESS",
-      });
-      logger.info(`Braintree sale success: txn=${btResult.transaction.id}`);
+      resultType = "success";
     } else {
-      result = mapTransaction({
-        merchantReference,
-        operation: "sale",
-        amount,
-        currency,
-        code: btResult?.transaction?.processorResponseCode || "BT_ERROR",
-        message:
-          btResult?.transaction?.processorResponseText ||
-          btResult?.message ||
-          "Braintree sale failed",
-        status: "FAILED",
-      });
-      logger.warn(`Braintree sale failed: ${btResult?.message}`);
+      resultType = "failed";
+    }
+
+    switch (resultType) {
+      case "pending":
+        result = mapTransaction({
+          merchantReference,
+          operation: "sale",
+          amount,
+          currency,
+          transactionId: btResult.transaction.id,
+          status: "PENDING",
+        });
+        logger.info(`Braintree sale pending: txn=${btResult.transaction.id}`);
+        break;
+
+      case "success":
+        result = mapTransaction({
+          merchantReference,
+          operation: "sale",
+          amount,
+          currency,
+          transactionId: btResult.transaction.id,
+          status: "SUCCESS",
+        });
+        logger.info(`Braintree sale success: txn=${btResult.transaction.id}`);
+        break;
+
+      case "failed":
+      default:
+        result = mapTransaction({
+          merchantReference,
+          operation: "sale",
+          amount,
+          currency,
+          code: btResult?.transaction?.processorResponseCode || "BT_ERROR",
+          message:
+            btResult?.transaction?.processorResponseText ||
+            btResult?.message ||
+            "Braintree sale failed",
+          status: "FAILED",
+        });
+        logger.warn(`Braintree sale failed: ${btResult?.message}`);
+        break;
     }
 
     await processTransaction({ idempotencyKey, callbackUrl, result, res });
